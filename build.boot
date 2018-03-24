@@ -1,5 +1,5 @@
 (def +clojurescript-version+ (or (System/getenv "CANARY_CLOJURESCRIPT_VERSION")
-                                 "1.9.946"))
+                                 "1.10.238"))
 (def +node-version+ "9.10.0")
 
 (set-env!

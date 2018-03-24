@@ -320,3 +320,18 @@
                        (string/replace $ ":" "_")
                        (string/replace $ ":" "-")))]
        (str "module" (when-not (.startsWith dirname "$") "$") dirname)))))
+
+(defn module-file-seq
+  ([] (module-file-seq "node_modules"))
+  ([dir]
+   (let [fseq (tree-seq
+               (fn [f]
+                 (and (.isDirectory (fs/lstatSync f))
+                      (not (boolean
+                            (re-find #"node_modules[\\\/].*[\\\/]node_modules" f)))))
+               (fn [d] (map #(path/join d %) (fs/readdirSync d)))
+               dir)]
+     (filter (fn [f]
+               (or (string/ends-with? f ".json")
+                   (string/ends-with? f ".js")))
+       fseq))))

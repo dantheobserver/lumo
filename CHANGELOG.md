@@ -9,6 +9,7 @@
 ### Changes
 
 - Upgrade Node.js to version 9.10.0.
+- Compiler update to 20180204.0.0 (from ClojureScript: https://github.com/clojure/clojurescript/commit/72e2ab6e63b3341aa26abcbdd72dc291cbd0c462)
 
 ## [1.8.0](https://github.com/anmonteiro/lumo/compare/1.8.0-beta...1.8.0) (2018-02-15)
 

@@ -57,7 +57,6 @@
    :check-useless-code DiagnosticGroups/CHECK_USELESS_CODE
    :check-variables DiagnosticGroups/CHECK_VARIABLES
    :closure-dep-method-usage-checks DiagnosticGroups/CLOSURE_DEP_METHOD_USAGE_CHECKS
-   :common-js-module-load DiagnosticGroups/COMMON_JS_MODULE_LOAD
    :conformance-violations DiagnosticGroups/CONFORMANCE_VIOLATIONS
    :const DiagnosticGroups/CONST
    :constant-property DiagnosticGroups/CONSTANT_PROPERTY
@@ -73,13 +72,14 @@
    :fileoverview-jsdoc DiagnosticGroups/FILEOVERVIEW_JSDOC
    :function-params DiagnosticGroups/FUNCTION_PARAMS
    :global-this DiagnosticGroups/GLOBAL_THIS
-   :inferred-const-checks DiagnosticGroups/INFERRED_CONST_CHECKS
    :internet-explorer-checks DiagnosticGroups/INTERNET_EXPLORER_CHECKS
    :invalid-casts DiagnosticGroups/INVALID_CASTS
    :j2cl-checks DiagnosticGroups/J2CL_CHECKS
+   :jsdoc-missing-type DiagnosticGroups/JSDOC_MISSING_TYPE
    :late-provide DiagnosticGroups/LATE_PROVIDE
    :lint-checks DiagnosticGroups/LINT_CHECKS
    :message-descriptions DiagnosticGroups/MESSAGE_DESCRIPTIONS
+   :misplaced-msg-annotation DiagnosticGroups/MISPLACED_MSG_ANNOTATION
    :misplaced-type-annotation DiagnosticGroups/MISPLACED_TYPE_ANNOTATION
    :missing-getcssname DiagnosticGroups/MISSING_GETCSSNAME
    :missing-override DiagnosticGroups/MISSING_OVERRIDE
@@ -88,18 +88,24 @@
    :missing-provide DiagnosticGroups/MISSING_PROVIDE
    :missing-require DiagnosticGroups/MISSING_REQUIRE
    :missing-return DiagnosticGroups/MISSING_RETURN
+   :missing-sources-warnings DiagnosticGroups/MISSING_SOURCES_WARNINGS
+   :module-load DiagnosticGroups/MODULE_LOAD
+   :msg-conventions DiagnosticGroups/MSG_CONVENTIONS
    :non-standard-jsdoc DiagnosticGroups/NON_STANDARD_JSDOC
    :report-unknown-types DiagnosticGroups/REPORT_UNKNOWN_TYPES
+   :strict-missing-properties DiagnosticGroups/STRICT_MISSING_PROPERTIES
    :strict-missing-require DiagnosticGroups/STRICT_MISSING_REQUIRE
    :strict-module-dep-check DiagnosticGroups/STRICT_MODULE_DEP_CHECK
    :strict-requires DiagnosticGroups/STRICT_REQUIRES
    :suspicious-code DiagnosticGroups/SUSPICIOUS_CODE
+   :too-many-type-params DiagnosticGroups/TOO_MANY_TYPE_PARAMS
    :tweaks DiagnosticGroups/TWEAKS
    :type-invalidation DiagnosticGroups/TYPE_INVALIDATION
    :undefined-names DiagnosticGroups/UNDEFINED_NAMES
    :undefined-variables DiagnosticGroups/UNDEFINED_VARIABLES
    :underscore DiagnosticGroups/UNDERSCORE
    :unknown-defines DiagnosticGroups/UNKNOWN_DEFINES
+   :unnecessary-escape DiagnosticGroups/UNNECESSARY_ESCAPE
    :unused-local-variable DiagnosticGroups/UNUSED_LOCAL_VARIABLE
    :unused-private-property DiagnosticGroups/UNUSED_PRIVATE_PROPERTY
    :use-of-goog-base DiagnosticGroups/USE_OF_GOOG_BASE
@@ -117,7 +123,9 @@
     :emit-constants :ups-externs :ups-foreign-libs :ups-libs :warning-handlers :preloads
     :browser-repl :cache-analysis-format :infer-externs :closure-generate-exports :npm-deps
     :fn-invoke-direct :checked-arrays :closure-module-roots :rewrite-polyfills :use-only-custom-externs
-    :watch :watch-error-fn :watch-fn :install-deps :process-shim :rename-prefix :rename-prefix-namespace})
+    :watch :watch-error-fn :watch-fn :install-deps :process-shim :rename-prefix :rename-prefix-namespace
+    :closure-variable-map-in :closure-property-map-in :closure-variable-map-out :closure-property-map-out
+    :stable-names :ignore-js-module-exts :opts-cache :aot-cache})
 
 #_(def string->charset
   {"iso-8859-1" StandardCharsets/ISO_8859_1
@@ -148,7 +156,10 @@
     (:ecmascript6-typed :es6-typed)   "ECMASCRIPT6_TYPED"
     (:ecmascript5 :es5)               "ECMASCRIPT5"
     (:ecmascript5-strict :es5-strict) "ECMASCRIPT5_STRICT"
-    (:ecmascript3 :es3)               "ECMASCRIPT3"))
+    (:ecmascript3 :es3)               "ECMASCRIPT3"
+    (:ecmascript-2016)                "ECMASCRIPT-2016"
+    (:ecmascript-2017)                "ECMASCRIPT-2017"
+    (:ecmascript-next)                "ECMASCRIPT-NEXT"))
 
 (def cljs-option->closure-option
   {:language-in "languageIn"
@@ -1459,6 +1470,35 @@
                          file)]
     (assoc ijs :source (get result-nodes processed-file))))
 
+(defn- package-json-entries
+  "Takes options and returns a sequence with the desired order of package.json
+   entries for the given :package-json-resolution mode. If no mode is provided,
+   defaults to :webpack (if no target is set) and :nodejs (if the target is
+   :nodejs)."
+  [opts]
+  {:pre [(or (= (:package-json-resolution opts) :webpack)
+             (= (:package-json-resolution opts) :nodejs)
+             (and (sequential? (:package-json-resolution opts))
+                  (every? string? (:package-json-resolution opts)))
+             (not (contains? opts :package-json-resolution)))]}
+  (let [modes {:nodejs ["main"]
+               :webpack ["browser" "module" "main"]}]
+    (if-let [mode (:package-json-resolution opts)]
+      (if (sequential? mode) mode (get modes mode))
+      (case (:target opts)
+        :nodejs (:nodejs modes)
+        (:webpack modes)))))
+
+(comment
+  (= (package-json-entries {}) ["browser" "module" "main"])
+  (= (package-json-entries {:package-json-resolution :nodejs}) ["main"])
+  (= (package-json-entries {:package-json-resolution :webpack}) ["browser" "module" "main"])
+  (= (package-json-entries {:package-json-resolution ["foo" "bar" "baz"]}) ["foo" "bar" "baz"])
+  (= (package-json-entries {:target :nodejs}) ["main"])
+  (= (package-json-entries {:target :nodejs :package-json-resolution :nodejs}) ["main"])
+  (= (package-json-entries {:target :nodejs :package-json-resolution :webpack}) ["browser" "module" "main"])
+  (= (package-json-entries {:target :nodejs :package-json-resolution ["foo" "bar"]}) ["foo" "bar"]))
+
 (defn convert-js-modules
   "Takes a list JavaScript modules as an IJavaScript and rewrites them into a Google
   Closure-compatible form. Returns list IJavaScript with the converted module
@@ -1816,15 +1856,21 @@
      (when env/*compiler*
        (:options @env/*compiler*))))
   ([{:keys [file]} {:keys [target] :as opts}]
-   (let [code (-> (slurp (io/resource "cljs/module_deps.js"))
+   (let [main-entries (str "[" (->> (package-json-entries opts)
+                                    (map #(str "\"" % "\""))
+                                    (string/join ",")) "]")
+         code (-> (slurp (io/resource "cljs/module_deps.js"))
                 (string/replace "JS_FILE" (string/replace file "\\" "\\\\"))
-                (string/replace "CLJS_TARGET" (str "" (when target (name target)))))
+                (string/replace "CLJS_TARGET" (str "" (when target (name target))))
+                (string/replace "MAIN_ENTRIES" main-entries))
          proc (child_process/spawnSync "node" #js ["--eval" code])]
      (if (zero? (.-status proc))
        (into []
          (map (fn [{:strs [file provides]}] file
                 (merge
                   {:file file
+                  ;; Just tag everything es6 here, add-converted-source will
+                   ;; ask the real type, CJS/ES6, from Closure.
                    :module-type :es6}
                   (when provides
                     {:provides provides}))))
@@ -1855,12 +1901,89 @@
    (let [node-modules "node_modules"]
      (if (and (not (empty? modules)) (fs/existsSync node-modules) (util/directory? node-modules))
        (let [modules (into #{} (map name) modules)
-             deps-file (path/join (util/output-directory opts) "cljs$node_modules.js")]
+             deps-file (path/join (util/output-directory opts) "cljs$node_modules.js")
+             old-contents (when (fs/existsSync deps-file)
+                            (slurp deps-file))
+             new-contents (let [sb (StringBuffer.)]
+                            (run! #(.append sb (str "require('" % "');\n")) modules)
+                            (str sb))]
          (util/mkdirs deps-file)
-         (spit deps-file
-           (string/join "\n" (map #(str "require('" % "');\n") modules)))
-         (node-inputs [{:file (path/resolve deps-file)}] opts))
+
+         (if (or (not= old-contents new-contents)
+                 (nil? env/*compiler*)
+                 (nil? (::transitive-dep-set @env/*compiler*)))
+           (do
+             (spit deps-file new-contents)
+             (let [transitive-js (node-inputs [{:file (path/resolve deps-file)}] opts)]
+               (when-not (nil? env/*compiler*)
+                 (swap! env/*compiler* update-in [::transitive-dep-set]
+                        assoc modules transitive-js))
+               transitive-js))
+           (when-not (nil? env/*compiler*)
+             (get-in @env/*compiler* [::transitive-dep-set modules]))))
        []))))
+
+(defn- node-file-seq->libs-spec*
+  [module-fseq]
+  (letfn [(package-json? [path]
+            (boolean (re-find #"node_modules[/\\](@[^/\\]+?[/\\])?[^/\\]+?[/\\]package\.json$" path)))]
+    (let [pkg-jsons (into {}
+                      (comp
+                        (map #(path/resolve %))
+                        (filter package-json?)
+                        (map (fn [path]
+                               [path (json/read-str (slurp path))])))
+                      module-fseq)]
+      (into []
+        (comp
+          (map #(path/resolve %))
+          (map (fn [path]
+                 (merge
+                   {:file path
+                    :module-type :es6}
+                   (when-not (package-json? path)
+                     (let [pkg-json-main (some
+                                           (fn [[pkg-json-path {:strs [main name]}]]
+                                             (when-not (nil? main)
+                                               ;; should be the only edge case in
+                                               ;; the package.json main field - Antonio
+                                               (let [main (cond-> main
+                                                            (string/starts-with? main "./")
+                                                            (subs 2))
+                                                     main-path (-> pkg-json-path
+                                                                 (string/replace #"\\" "/")
+                                                                 (string/replace #"package\.json$" "")
+                                                                 (str main))]
+                                                 (some (fn [candidate]
+                                                         (when (= candidate (string/replace path #"\\" "/"))
+                                                           name))
+                                                   (cond-> [main-path]
+                                                     (nil? (re-find #"\.js(on)?$" main-path))
+                                                     (into [(str main-path ".js") (str main-path "/index.js") (str main-path ".json")]))))))
+                                           pkg-jsons)]
+                       {:provides (let [module-rel-name (-> (subs path (string/last-index-of path "node_modules"))
+                                                            (string/replace #"\\" "/")
+                                                            (string/replace #"node_modules[\\\/]" ""))
+                                        provides (cond-> [module-rel-name (string/replace module-rel-name #"\.js(on)?$" "")]
+                                                   (some? pkg-json-main)
+                                                   (conj pkg-json-main))
+                                        index-replaced (string/replace module-rel-name #"[\\\/]index\.js(on)?$" "")]
+                                    (cond-> provides
+                                      (and (boolean (re-find #"[\\\/]index\.js(on)?$" module-rel-name))
+                                           (not (some #{index-replaced} provides)))
+                                      (conj index-replaced)))}))))))
+        module-fseq))))
+
+(def node-file-seq->libs-spec (memoize node-file-seq->libs-spec*))
+
+(defn index-node-modules-dir
+  ([]
+   (index-node-modules-dir
+     (when env/*compiler*
+       (:options @env/*compiler*))))
+  ([opts]
+   (let [module-fseq (util/module-file-seq)]
+     (node-file-seq->libs-spec module-fseq))))
 
 (defn ensure-module-opts [opts]
   (update opts :modules

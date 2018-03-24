@@ -2336,7 +2336,7 @@
                       (let [outfile (path/join (util/output-directory opts)
                                       "goog" "bootstrap" "nodejs.js")]
                         (util/mkdirs outfile)
-                        (io/copy (io/resource "cljs/bootstrap_node.js") outfile)))
+                        (io/copy (io/resource "cljs/bootstrap_nodejs.js") outfile)))
                     ret))
                 (finally
                   (reset! cljs/*loaded* runtime-loaded)))))))

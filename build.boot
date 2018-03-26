@@ -130,7 +130,7 @@
        'org.clojure/google-closure-library #"^goog[\\\/].*(?<!_test)\.js$"
        'org.clojure/google-closure-library-third-party #"^goog[\\\/].*(?<!_test)\.js$"
        'org.clojure/tools.reader #"^cljs.*clj$"
-       'org.clojure/clojurescript #""
+       'org.clojure/clojurescript #"(cljs|clojure)[\\\/].*(\.clj.?|\.js|\.cache\.json|\.aot\.edn|\.aot\.js\.map)$"
        'org.clojure/test.check #""}
       :move {#"^main.out[\\\/]((cljs|clojure|cognitect|lumo|lazy_map|fipp|process).*)" "$1"})
     (sift :include #{#"^main.js" #"^bundle.js" #"^cljs(?!\.js)" #"core\$macros"

@@ -94,8 +94,7 @@
       (body)))
 
 (defn cached-core [ns ext opts]
-  ;; TODO: revert this
-  (and ;(= :none (:optimizations opts))
+  (and (= :none (:optimizations opts))
     (not= "cljc" ext)
     (= 'cljs.core ns)
     (io/resource "cljs/core.aot.js")))

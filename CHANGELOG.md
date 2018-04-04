@@ -5,12 +5,13 @@
 ### Bug fixes
 
 - `clojure.reflect` not bundled ([#369](https://github.com/anmonteiro/lumo/issues/369)).
+- Source map with optimizations cannot be built ([#361](https://github.com/anmonteiro/lumo/issues/361)).
 
 ### Changes
 
 - Upgrade Node.js to version 9.10.0.
-- Bump ClojureScript to 1.10.X ([#379](https://github.com/anmonteiro/lumo/pull/379)).
-- Compiler update to 20180204.0.0 (from ClojureScript: https://github.com/clojure/clojurescript/commit/72e2ab6e63b3341aa26abcbdd72dc291cbd0c462)
+- ClojureScript update to 1.10.X ([#379](https://github.com/anmonteiro/lumo/pull/379)).
+- Google Closure Compiler update to 20180319.0.0 ([#379](https://github.com/anmonteiro/lumo/pull/379)).
 
 ## [1.8.0](https://github.com/anmonteiro/lumo/compare/1.8.0-beta...1.8.0) (2018-02-15)
 
